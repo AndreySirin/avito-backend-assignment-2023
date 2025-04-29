@@ -25,6 +25,9 @@ func main() {
 	}
 	defer db.Close()
 
-	srv := server.NewServer(lg, "8080")
-	srv.Start()
+	srv := server.NewServer(lg, ":8080", db)
+	err = srv.Start()
+	if err != nil {
+		lg.Error("ошибка при старте", err)
+	}
 }

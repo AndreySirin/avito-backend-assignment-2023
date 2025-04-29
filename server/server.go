@@ -4,21 +4,25 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"log/slog"
+	"myapp/stor"
 	"net/http"
 )
 
 type Server struct {
 	httpServer *http.Server
 	logg       *slog.Logger
+	Sub        stor.User_Subscription
 }
 
-func NewServer(logger *slog.Logger, adr string) *Server {
+func NewServer(logger *slog.Logger, adr string, subscription stor.User_Subscription) *Server {
 	s := &Server{
 		logg: logger,
+		Sub:  subscription,
 	}
 	r := chi.NewRouter()
 	r.Route("/", func(r chi.Router) {
 		r.Route("/v1", func(r chi.Router) {
+			r.Post("/UserAddSegment", s.UserAddSegment)
 		})
 	})
 

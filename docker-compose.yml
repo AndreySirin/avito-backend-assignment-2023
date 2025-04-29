@@ -1,9 +1,8 @@
-version: '3.8'
 
 services:
   postgres:
     image: postgres:latest
-    container_name: postgres-container
+    container_name: ps
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: secret
