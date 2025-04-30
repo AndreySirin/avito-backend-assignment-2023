@@ -1,4 +1,4 @@
-package stor
+package storage
 
 import (
 	"context"
@@ -32,7 +32,8 @@ func (s *Storage) InsertUserInSegment(ctx context.Context, subs Subscription) (e
 		}
 	}()
 	var exists bool
-	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id_user = $1)", subs.IdUser).Scan(&exists)
+	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id_user = $1)", subs.IdUser).
+		Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("error checking if user exists: %w", err)
 	}
@@ -40,7 +41,11 @@ func (s *Storage) InsertUserInSegment(ctx context.Context, subs Subscription) (e
 		return fmt.Errorf("user does not exist")
 	}
 
-	rows, err := tx.QueryContext(ctx, "SELECT id_segment FROM segments WHERE title=ANY($1)", subs.NameSegment)
+	rows, err := tx.QueryContext(
+		ctx,
+		"SELECT id_segment FROM segments WHERE title=ANY($1)",
+		subs.NameSegment,
+	)
 	if err != nil {
 		return fmt.Errorf("error selecting segment: %w", err)
 	}
@@ -81,7 +86,11 @@ func (s *Storage) DeleteUserInSegment(ctx context.Context, subs Subscription) (e
 			err = tx.Commit()
 		}
 	}()
-	rows, err := tx.QueryContext(ctx, "SELECT id_segment FROM segments WHERE title=ANY($1)", subs.NameSegment)
+	rows, err := tx.QueryContext(
+		ctx,
+		"SELECT id_segment FROM segments WHERE title=ANY($1)",
+		subs.NameSegment,
+	)
 	if err != nil {
 		return fmt.Errorf("error selecting segment: %w", err)
 	}
@@ -98,8 +107,12 @@ func (s *Storage) DeleteUserInSegment(ctx context.Context, subs Subscription) (e
 	if err = rows.Err(); err != nil {
 		return fmt.Errorf("failed to iterate rows: %w", err)
 	}
-	res, err := tx.ExecContext(ctx, `DELETE FROM subscriptions WHERE id_user = $1 AND id_segment=ANY($2)`,
-		subs.IdUser, subs.IdSegment)
+	res, err := tx.ExecContext(
+		ctx,
+		`DELETE FROM subscriptions WHERE id_user = $1 AND id_segment=ANY($2)`,
+		subs.IdUser,
+		subs.IdSegment,
+	)
 	if err != nil {
 		return fmt.Errorf("error deleting segment: %w", err)
 	}

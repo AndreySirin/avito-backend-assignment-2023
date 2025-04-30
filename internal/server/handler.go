@@ -3,8 +3,9 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"myapp/stor"
 	"net/http"
+
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/storage"
 )
 
 func (s *Server) UserAddSegment(w http.ResponseWriter, r *http.Request) {
@@ -14,7 +15,7 @@ func (s *Server) UserAddSegment(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	var subs stor.Subscription
+	var subs storage.Subscription
 	err := json.NewDecoder(r.Body).Decode(&subs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -37,7 +38,7 @@ func (s *Server) UserDeleteSegment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	var subs stor.Subscription
+	var subs storage.Subscription
 	err := json.NewDecoder(r.Body).Decode(&subs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

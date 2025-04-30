@@ -2,22 +2,24 @@ package server
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"log/slog"
-	"myapp/stor"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/storage"
 )
 
 type Server struct {
+	lg         *slog.Logger
 	httpServer *http.Server
-	logg       *slog.Logger
-	Sub        stor.User_Subscription
+	Sub        storage.User_Subscription
 }
 
-func NewServer(logger *slog.Logger, adr string, subscription stor.User_Subscription) *Server {
+func NewServer(logger *slog.Logger, adr string, subscription storage.User_Subscription) *Server {
 	s := &Server{
-		logg: logger,
-		Sub:  subscription,
+		lg:  logger,
+		Sub: subscription,
 	}
 	r := chi.NewRouter()
 	r.Route("/api", func(r chi.Router) {

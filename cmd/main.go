@@ -1,9 +1,8 @@
 package main
 
 import (
-	"myapp/logg"
-	"myapp/server"
-	"myapp/stor"
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/server"
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/storage"
 )
 
 const (
@@ -15,11 +14,10 @@ const (
 )
 
 func main() {
-
 	lg := logg.NewLogg()
 	lg.Info("Start server")
 
-	db, err := stor.NewStorage(lg, USER, PASSWORD, DB, host, port)
+	db, err := storage.NewStorage(lg, USER, PASSWORD, DB, host, port)
 	if err != nil {
 		lg.Error("ошибка при подключении к базе", err)
 	}
