@@ -1,5 +1,4 @@
 
-
 CREATE TABLE users (
                        id_user SERIAL PRIMARY KEY
 );
@@ -20,15 +19,9 @@ INSERT INTO segments (title) VALUES
 
 
 CREATE TABLE subscriptions (
-                               id_subscription SERIAL PRIMARY KEY,
+                               PRIMARY KEY (id_user, id_segment),
                                id_user INTEGER NOT NULL REFERENCES users(id_user) ON DELETE CASCADE,
+                               id_segment INTEGER NOT NULL REFERENCES segments(id_segment) ON DELETE CASCADE,
                                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                expires_at TIMESTAMP NOT NULL
-);
-
-
-CREATE TABLE subscription_segments (
-                                       id_subscription INTEGER NOT NULL REFERENCES subscriptions(id_subscription) ON DELETE CASCADE,
-                                       id_segment INTEGER NOT NULL REFERENCES segments(id_segment) ON DELETE CASCADE,
-                                       PRIMARY KEY (id_subscription, id_segment)
 );

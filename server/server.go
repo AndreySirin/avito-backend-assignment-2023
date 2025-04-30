@@ -20,9 +20,10 @@ func NewServer(logger *slog.Logger, adr string, subscription stor.User_Subscript
 		Sub:  subscription,
 	}
 	r := chi.NewRouter()
-	r.Route("/", func(r chi.Router) {
+	r.Route("/api", func(r chi.Router) {
 		r.Route("/v1", func(r chi.Router) {
 			r.Post("/UserAddSegment", s.UserAddSegment)
+			r.Post("/DeleteSegment", s.UserDeleteSegment)
 		})
 	})
 
