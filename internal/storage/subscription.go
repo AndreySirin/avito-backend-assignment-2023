@@ -2,24 +2,25 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"time"
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/entity"
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
 )
 
-type Subscription struct {
-	IdUser      int       `json:"id_user"`
-	NameSegment []string  `json:"name_segment"`
-	IdSegment   []int     `json:"id_segment"`
-	CreatedAt   time.Time `json:"created_at"`
-	ExpiresAt   time.Time `json:"expires_at"`
+type SubscriptionStorage struct {
+	lg *logger.MyLogger
+	db *sql.DB
 }
 
-type User_Subscription interface {
-	InsertUserInSegment(context.Context, Subscription) (err error)
-	DeleteUserInSegment(context.Context, Subscription) (err error)
+func NewSubscription(db *Storage) *SubscriptionStorage {
+	return &SubscriptionStorage{
+		lg: db.lg,
+		db: db.db,
+	}
 }
 
-func (s *Storage) InsertUserInSegment(ctx context.Context, subs Subscription) (err error) {
+func (s *SubscriptionStorage) InsertUserInSegment(ctx context.Context, subs entity.CreateSubscription) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error starting transaction: %w", err)
@@ -64,17 +65,17 @@ func (s *Storage) InsertUserInSegment(ctx context.Context, subs Subscription) (e
 	}
 
 	_, err = tx.ExecContext(ctx, `
-INSERT INTO subscriptions (id_user,id_segment,expires_at)
-SELECT $1, id_segm,$3
+INSERT INTO subscriptions (id_user,id_segment)
+SELECT $1, id_segm
 FROM UNNEST($2::int[]) AS id_segm`,
-		subs.IdUser, subs.IdSegment, subs.ExpiresAt)
+		subs.IdUser, subs.IdSegment)
 	if err != nil {
 		return fmt.Errorf("error inserting segment: %w", err)
 	}
 	return nil
 }
 
-func (s *Storage) DeleteUserInSegment(ctx context.Context, subs Subscription) (err error) {
+func (s *SubscriptionStorage) DeleteUserInSegment(ctx context.Context, subs entity.CreateSubscription) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error starting transaction: %w", err)

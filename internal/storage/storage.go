@@ -3,17 +3,16 @@ package storage
 import (
 	"database/sql"
 	"fmt"
-	"log/slog"
-
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Storage struct {
-	lg *slog.Logger
+	lg *logger.MyLogger
 	db *sql.DB
 }
 
-func New(log *slog.Logger, user, password, dbname, host, port string) (*Storage, error) {
+func New(log *logger.MyLogger, user, password, dbname, host, port string) (*Storage, error) {
 	connStr := fmt.Sprintf(
 		"user=%s password=%s dbname=%s host=%s port=%s sslmode=disable",
 		user, password, dbname, host, port,

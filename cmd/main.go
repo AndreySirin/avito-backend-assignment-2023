@@ -1,7 +1,9 @@
 package main
 
 import (
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/server"
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/service"
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/storage"
 )
 
@@ -14,18 +16,25 @@ const (
 )
 
 func main() {
-	lg := logg.NewLogg()
+	lg := logger.NewLogger()
 	lg.Info("Start server")
 
-	db, err := storage.NewStorage(lg, USER, PASSWORD, DB, host, port)
+	db, err := storage.New(lg, USER, PASSWORD, DB, host, port)
 	if err != nil {
 		lg.Error("ошибка при подключении к базе", err)
 	}
 	defer db.Close()
 
-	srv := server.NewServer(lg, ":8080", db)
-	err = srv.Start()
-	if err != nil {
-		lg.Error("ошибка при старте", err)
-	}
+	segm := storage.NewSegment(db)
+	subsc := storage.NewSubscription(db)
+	us := storage.NewUser(db)
+
+	SEGMservice := service.NewSegment(lg, segm)
+	SUBSCsirvice := service.NewSubscriptionService(lg, subsc)
+	USERservice := service.NewUserService(lg, us)
+
+	HUNDL := server.NewHNDL(lg, USERservice, SEGMservice, SUBSCsirvice)
+
+	srv := server.NewServer(lg, ":8080", HUNDL)
+	srv.Start()
 }
