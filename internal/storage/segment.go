@@ -23,7 +23,7 @@ func NewSegment(db *Storage) *SegmentStorage {
 func (s *SegmentStorage) CreateSegment(ctx context.Context, segment entity.Segment) (int, error) {
 	err := s.db.QueryRowContext(ctx,
 		`INSERT INTO segments (title,description,auto_user_prc)
-		VALUES ($1,$2,$3) RETURNING id_segment`, segment.Title, segment.Description, segment.AutoUserPct).
+		VALUES ($1,$2,$3) RETURNING id_segment`, segment.Title, segment.Description, segment.AutoUserPrc).
 		Scan(&segment.IDSegment)
 	if err != nil {
 		return 0, fmt.Errorf("error from CreateSegment %v", err)
@@ -74,7 +74,7 @@ func (s *SegmentStorage) UpDateSegment(ctx context.Context, segment entity.Segme
 		"UPDATE segments SET title=$1,description=$2,auto_user_prc=$3 WHERE id_segment=$4",
 		segment.Title,
 		segment.Description,
-		segment.AutoUserPct,
+		segment.AutoUserPrc,
 		segment.ID,
 	)
 	if err != nil {
