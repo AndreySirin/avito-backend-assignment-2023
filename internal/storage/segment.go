@@ -21,22 +21,24 @@ func NewSegment(db *Storage) *SegmentStorage {
 }
 
 func (s *SegmentStorage) CreateSegment(ctx context.Context, segment entity.Segment) (int, error) {
-	err := s.db.QueryRowContext(ctx, "INSERT INTO segments (title) VALUES ($1) RETURNING id_segment", segment.Title).
-		Scan(&segment)
+	err := s.db.QueryRowContext(ctx,
+		`INSERT INTO segments (title,description,auto_user_prc)
+		VALUES ($1,$2,$3) RETURNING id_segment`, segment.Title, segment.Description, segment.AutoUserPct).
+		Scan(&segment.IDSegment)
 	if err != nil {
-		return 0, fmt.Errorf("error from CreateSegmen %s", err)
+		return 0, fmt.Errorf("error from CreateSegment %v", err)
 	}
-	return segment.ID, nil
+	return segment.IDSegment, nil
 }
 
 func (s *SegmentStorage) DeleteSegment(ctx context.Context, segment entity.Segment) error {
 	res, err := s.db.ExecContext(
 		ctx,
 		"DELETE FROM segments WHERE id_segment=$1",
-		segment.ID,
+		segment.IDSegment,
 	)
 	if err != nil {
-		return fmt.Errorf("error from DeleteSegg %w", err)
+		return fmt.Errorf("error from DeleteSegment %w", err)
 	}
 	rows, err := res.RowsAffected()
 	if err != nil || rows == 0 {
@@ -58,7 +60,7 @@ func (s *SegmentStorage) UpDateSegment(ctx context.Context, segment entity.Segme
 		}
 	}()
 	var exists bool
-	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM segment WHERE id_segment=$1)", segment.ID).
+	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM segments WHERE id_segment=$1)", segment.ID).
 		Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("check segment existence: %w", err)
@@ -69,8 +71,10 @@ func (s *SegmentStorage) UpDateSegment(ctx context.Context, segment entity.Segme
 
 	_, err = tx.ExecContext(
 		ctx,
-		"UPDATE segment SET title=$1 WHERE id_segment=$2",
+		"UPDATE segments SET title=$1,description=$2,auto_user_prc=$3 WHERE id_segment=$4",
 		segment.Title,
+		segment.Description,
+		segment.AutoUserPct,
 		segment.ID,
 	)
 	if err != nil {

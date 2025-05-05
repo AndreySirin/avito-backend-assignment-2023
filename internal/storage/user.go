@@ -21,7 +21,7 @@ func NewUser(db *Storage) *UserStorage {
 	}
 }
 func (u *UserStorage) CreateUser(ctx context.Context, user entity.User) (int, error) {
-	err := u.db.QueryRowContext(ctx, "INSERT INTO users (full_name,gender,date_of_birth) VALUES ($1,$2,$3)RETURNING Id ",
+	err := u.db.QueryRowContext(ctx, "INSERT INTO users (full_name,gender,date_of_birth) VALUES ($1,$2,$3)RETURNING id_user ",
 		user.FullName, user.Gender, user.DateOfBirth).Scan(&user.ID)
 	if err != nil {
 		return 0, fmt.Errorf("create user: %v", err)
@@ -42,7 +42,7 @@ func (u *UserStorage) UpdateUser(ctx context.Context, user entity.User) (err err
 		}
 	}()
 	var exists bool
-	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE Id = $1)", user.ID).Scan(&exists)
+	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id_user = $1)", user.ID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("update user: %v", err)
 	}
@@ -50,18 +50,17 @@ func (u *UserStorage) UpdateUser(ctx context.Context, user entity.User) (err err
 		return fmt.Errorf("user does not exist")
 	}
 	_, err = tx.ExecContext(ctx,
-		`UPDATE users SET full_name=$1,gender=$2,data_of_birth=$3
+		`UPDATE users SET full_name=$1,gender=$2,date_of_birth=$3
 		 WHERE id_user=$4`,
 		user.FullName, user.Gender, user.DateOfBirth, user.ID)
 	if err != nil {
 		return fmt.Errorf("update user: %v", err)
 	}
-
 	return nil
 }
 
 func (u *UserStorage) DeleteUser(ctx context.Context, user entity.User) error {
-	rows, err := u.db.ExecContext(ctx, "DELETE FROM users WHERE id = $1", user.ID)
+	rows, err := u.db.ExecContext(ctx, "DELETE FROM users WHERE id_user = $1", user.ID)
 	if err != nil {
 		log.Printf("delete user: %v", err)
 	}
@@ -69,7 +68,6 @@ func (u *UserStorage) DeleteUser(ctx context.Context, user entity.User) error {
 	if err != nil {
 		return fmt.Errorf("checking rows affected: %v", err)
 	}
-
 	if rowsAffected == 0 {
 		return fmt.Errorf("no user found with id %v", user.ID)
 	}

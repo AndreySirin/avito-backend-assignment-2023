@@ -20,8 +20,16 @@ func NewServer(lg *logger.MyLogger, adr string, hndl *HNDL) *Server {
 	r := chi.NewRouter()
 	r.Route("/api", func(r chi.Router) {
 		r.Route("/v1", func(r chi.Router) {
+			r.Post("/UserCreate", hndl.UserCreate)
+			r.Put("/UserUpdate/{id}", hndl.UserUpdate)
+			r.Delete("/UserDelete/{id}", hndl.UserDelete)
+
+			r.Post("/SegmentCreate", hndl.SegmentCreate)
+			r.Put("/SegmentUpdate/{id}", hndl.SegmentUpdate)
+			r.Delete("/SegmentDelete/{id}", hndl.SegmentDelete)
+
 			r.Post("/UserAddSegment", hndl.UserAddSegment)
-			r.Post("/DeleteSegment", hndl.UserDeleteSegment)
+			r.Delete("/DeleteUserSegment/{id}", hndl.UserDeleteSegment)
 		})
 	})
 

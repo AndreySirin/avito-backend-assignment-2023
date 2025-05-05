@@ -110,8 +110,7 @@ func (s *SubscriptionStorage) DeleteUserInSegment(ctx context.Context, subs enti
 	}
 	res, err := tx.ExecContext(
 		ctx,
-		`DELETE FROM subscriptions WHERE id_user = $1 AND id_segment=ANY($2)`,
-		subs.IdUser,
+		`DELETE FROM subscriptions WHERE id_segment=ANY($1)`,
 		subs.IdSegment,
 	)
 	if err != nil {

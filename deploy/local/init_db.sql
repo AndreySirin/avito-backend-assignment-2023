@@ -2,7 +2,7 @@ CREATE TABLE users (
     id_user SERIAL PRIMARY KEY,
     full_name VARCHAR(255) NOT NULL,
     gender VARCHAR(10) NOT NULL,
-    date_of_birth DATE NOT NULL,
+    date_of_birth TIMESTAMP NOT NULL,
     create_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     delete_at TIMESTAMP
