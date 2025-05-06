@@ -8,18 +8,17 @@ import (
 )
 
 const (
-	USER     = "admin"
-	PASSWORD = "secret"
-	DB       = "mydb"
-	port     = "5432"
-	host     = "localhost"
+	dbname   = "database"
+	user     = "admin"
+	password = "secret"
+	address  = "ps:5432"
 )
 
 func main() {
 	lg := logger.NewLogger()
 	lg.Info("Start server")
 
-	db, err := storage.New(lg, USER, PASSWORD, DB, host, port)
+	db, err := storage.New(lg, user, password, dbname, address)
 	if err != nil {
 		lg.Error("ошибка при подключении к базе", err)
 	}

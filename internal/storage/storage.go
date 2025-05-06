@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"net/url"
 )
 
 type Storage struct {
@@ -12,12 +13,17 @@ type Storage struct {
 	db *sql.DB
 }
 
-func New(log *logger.MyLogger, user, password, dbname, host, port string) (*Storage, error) {
-	connStr := fmt.Sprintf(
-		"user=%s password=%s dbname=%s host=%s port=%s sslmode=disable",
-		user, password, dbname, host, port,
-	)
-	sqlDB, err := sql.Open("pgx", connStr)
+func New(log *logger.MyLogger, user, password, dbname, address string) (*Storage, error) {
+	dsn := (&url.URL{
+		Scheme: "postgresql",
+		User:   url.UserPassword(user, password),
+		Host:   address,
+		Path:   dbname,
+	}).String()
+
+	log.Info(fmt.Sprintf("Подключение к базе: %s", dsn))
+
+	sqlDB, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("connect to database: %w", err)
 	}
