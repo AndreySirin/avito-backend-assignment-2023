@@ -5,23 +5,17 @@ import (
 	"os"
 )
 
-type MyloggerInterface interface {
-	Error(msg string, arg ...any)
-	Info(msg string, arg ...any)
-}
+func New(debug bool) *slog.Logger {
+	lg := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
 
-type MyLogger struct {
-	lg *slog.Logger
-}
+	if debug {
+		lg = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}))
+		lg.Info("DEBUG MODE")
+	}
 
-func NewLogger() *MyLogger {
-	return &MyLogger{
-		lg: slog.New(slog.NewJSONHandler(os.Stdout, nil))}
-}
-
-func (m *MyLogger) Error(msg string, arg ...any) {
-	m.lg.Error(msg, arg...)
-}
-func (m *MyLogger) Info(msg string, arg ...any) {
-	m.lg.Info(msg, arg...)
+	return lg
 }

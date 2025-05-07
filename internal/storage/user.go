@@ -2,35 +2,115 @@ package storage
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"fmt"
+	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
+	"time"
+
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/entity"
-	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
-	"log"
 )
 
-type UserStorage struct {
-	lg *logger.MyLogger
-	db *sql.DB
-}
-
-func NewUser(db *Storage) *UserStorage {
-	return &UserStorage{
-		lg: db.lg,
-		db: db.db,
+func (s *Storage) CreateUser(ctx context.Context, user entity.User) (uuid.UUID, error) {
+	if err := user.Validate(); err != nil {
+		return uuid.Nil, fmt.Errorf("%w: %v", ErrNotValid, err)
 	}
-}
-func (u *UserStorage) CreateUser(ctx context.Context, user entity.User) (int, error) {
-	err := u.db.QueryRowContext(ctx, "INSERT INTO users (full_name,gender,date_of_birth) VALUES ($1,$2,$3)RETURNING id_user ",
-		user.FullName, user.Gender, user.DateOfBirth).Scan(&user.ID)
+
+	query, args, err := sq.Insert("users").
+		Columns(
+			"id",
+			"full_name",
+			"gender",
+			"date_of_birth",
+			"create_at",
+			"update_at",
+			"delete_at",
+		).
+		Values(
+			user.ID,
+			user.FullName,
+			user.Gender,
+			user.DateOfBirth,
+			user.CreatedAt,
+			user.UpdatedAt,
+			user.DeletedAt,
+		).Suffix("RETURNING id").
+		PlaceholderFormat(sq.Dollar).ToSql()
 	if err != nil {
-		return 0, fmt.Errorf("create user: %v", err)
+		return uuid.Nil, fmt.Errorf("build query: %v", err)
 	}
-	return user.ID, nil
+
+	var userID uuid.UUID
+	if err = s.db.QueryRowContext(
+		ctx,
+		query,
+		args...,
+	).Scan(&userID); err != nil {
+		return uuid.Nil, fmt.Errorf("create user: %v", err)
+	}
+
+	if userID != user.ID {
+		return uuid.Nil, errors.New("user ID mismatch")
+	}
+
+	return userID, nil
 }
 
-func (u *UserStorage) UpdateUser(ctx context.Context, user entity.User) (err error) {
-	tx, err := u.db.BeginTx(ctx, nil)
+func (s *Storage) GetUser(ctx context.Context, id uuid.UUID) (*entity.User, error) {
+	var user entity.User
+	query, args, err := sq.Select(
+		"full_name",
+		"gender",
+		"date_of_birth",
+	).From("users").
+		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{"delete_at": nil}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build query: %v", err)
+	}
+	err = s.db.QueryRowContext(ctx, query, args...).Scan(&user.FullName, &user.Gender, &user.DateOfBirth)
+	if err != nil {
+		return nil, fmt.Errorf("get user: %v", err)
+	}
+	return &user, nil
+}
+
+func (s *Storage) ListUsers(ctx context.Context) ([]entity.User, error) {
+
+	query, args, err := sq.Select(
+		"full_name",
+		"gender",
+		"date_of_birth",
+	).From("users").
+		Where(sq.Eq{"delete_at": nil}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build query: %v", err)
+	}
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query: %v", err)
+	}
+	defer rows.Close()
+
+	var users []entity.User
+	for rows.Next() {
+		var u entity.User
+		err = rows.Scan(&u.FullName, &u.Gender, &u.DateOfBirth)
+		if err != nil {
+			return nil, fmt.Errorf("query rows: %v", err)
+		}
+		users = append(users, u)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %v", err)
+	}
+	return users, nil
+}
+
+func (s *Storage) UpdateUser(ctx context.Context, user entity.User) (err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("update user: %v", err)
 	}
@@ -42,34 +122,51 @@ func (u *UserStorage) UpdateUser(ctx context.Context, user entity.User) (err err
 		}
 	}()
 	var exists bool
-	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id_user = $1)", user.ID).Scan(&exists)
+	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", user.ID).
+		Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("update user: %v", err)
 	}
 	if !exists {
 		return fmt.Errorf("user does not exist")
 	}
-	_, err = tx.ExecContext(ctx,
-		`UPDATE users SET full_name=$1,gender=$2,date_of_birth=$3
-		 WHERE id_user=$4`,
-		user.FullName, user.Gender, user.DateOfBirth, user.ID)
+
+	query, args, err := sq.Update("users").
+		Set("full_name", user.FullName).
+		Set("gender", user.Gender).
+		Set("date_of_birth", user.DateOfBirth).
+		Set("update_at", user.UpdatedAt).
+		Where(sq.Eq{"id": user.ID}).
+		Where(sq.Eq{"delete_at": nil}).ToSql()
+	if err != nil {
+		return fmt.Errorf("build query: %v", err)
+	}
+	_, err = tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("update user: %v", err)
 	}
 	return nil
 }
 
-func (u *UserStorage) DeleteUser(ctx context.Context, user entity.User) error {
-	rows, err := u.db.ExecContext(ctx, "DELETE FROM users WHERE id_user = $1", user.ID)
+func (s *Storage) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	t := time.Now()
+	query, args, err := sq.Update("users").
+		Set("delete_at", t).
+		Where(sq.Eq{"id": id}).
+		Where(sq.Eq{"delete_at": nil}).ToSql()
 	if err != nil {
-		log.Printf("delete user: %v", err)
+		return fmt.Errorf("build query: %v", err)
+	}
+	rows, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("delete user: %v", err)
 	}
 	rowsAffected, err := rows.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("checking rows affected: %v", err)
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("no user found with id %v", user.ID)
+		return fmt.Errorf("no user found with id %v", id)
 	}
 	return nil
 }

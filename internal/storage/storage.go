@@ -3,17 +3,20 @@ package storage
 import (
 	"database/sql"
 	"fmt"
-	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"log/slog"
 	"net/url"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+const module = "storage"
+
 type Storage struct {
-	lg *logger.MyLogger
+	lg *slog.Logger
 	db *sql.DB
 }
 
-func New(log *logger.MyLogger, user, password, dbname, address string) (*Storage, error) {
+func New(lg *slog.Logger, user, password, dbname, address string) (*Storage, error) {
 	dsn := (&url.URL{
 		Scheme: "postgresql",
 		User:   url.UserPassword(user, password),
@@ -21,18 +24,20 @@ func New(log *logger.MyLogger, user, password, dbname, address string) (*Storage
 		Path:   dbname,
 	}).String()
 
-	log.Info(fmt.Sprintf("Подключение к базе: %s", dsn))
+	lg.Debug(dsn)
 
-	sqlDB, err := sql.Open("pgx", dsn)
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("connect to database: %w", err)
 	}
-	if err = sqlDB.Ping(); err != nil {
+
+	if err = db.Ping(); err != nil {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
+
 	return &Storage{
-		lg: log,
-		db: sqlDB,
+		lg: lg.With("module", module),
+		db: db,
 	}, nil
 }
 
