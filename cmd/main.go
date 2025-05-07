@@ -1,39 +1,62 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"os/signal"
+
+	"golang.org/x/sync/errgroup"
+
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/server"
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/service"
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/storage"
 )
 
+// FIXME - убрать в конфиг файл
 const (
-	dbname   = "database"
-	user     = "admin"
+	dbname   = "postgres"
+	user     = "postgres"
 	password = "secret"
-	address  = "ps:5432"
+	address  = "localhost:5432"
 )
 
 func main() {
-	lg := logger.NewLogger()
-	lg.Info("Start server")
+	if err := run(); err != nil {
+		panic(err)
+	}
+}
+
+func run() error {
+	ctx, cancel := signal.NotifyContext(context.Background())
+	defer cancel()
+
+	// TODO флаг debug брать из конфиг файла
+	lg := logger.New(true)
 
 	db, err := storage.New(lg, user, password, dbname, address)
 	if err != nil {
-		lg.Error("ошибка при подключении к базе", err)
+		return fmt.Errorf("new database: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if errClose := db.Close(); errClose != nil {
+			lg.With("error", errClose).Error("db.Close() in run()")
+		}
+	}()
 
-	segm := storage.NewSegment(db)
-	subsc := storage.NewSubscription(db)
-	us := storage.NewUser(db)
+	s := service.New(lg, db)
 
-	SEGMservice := service.NewSegment(lg, segm)
-	SUBSCsirvice := service.NewSubscriptionService(lg, subsc)
-	USERservice := service.NewUserService(lg, us)
+	srv := server.New(lg, ":8081", s)
 
-	HUNDL := server.NewHNDL(lg, USERservice, SEGMservice, SUBSCsirvice)
+	eg, ctx := errgroup.WithContext(ctx)
 
-	srv := server.NewServer(lg, ":8080", HUNDL)
-	srv.Start()
+	// Run servers.
+	eg.Go(func() error { return srv.Run(ctx) })
+
+	if err = eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+		return fmt.Errorf("run: %v", err)
+	}
+
+	return nil
 }

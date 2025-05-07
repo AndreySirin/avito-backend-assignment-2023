@@ -2,32 +2,71 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/entity"
-	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/storage"
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/validator"
 )
 
-type UserStorage interface {
-	CreateUser(context.Context, entity.User) (int, error)
-	UpdateUser(context.Context, entity.User) (err error)
-	DeleteUser(context.Context, entity.User) error
-}
-type UserService struct {
-	lg      logger.MyloggerInterface
-	storage UserStorage
+var ErrNotValid = errors.New("bad request")
+
+type CreateUserRequest struct {
+	FullName    string    `validate:"required"`
+	Gender      string    `validate:"required,oneof=male female"`
+	DateOfBirth time.Time `validate:"required"`
 }
 
-func NewUserService(lg *logger.MyLogger, storage UserStorage) *UserService {
-	return &UserService{
-		lg:      lg,
-		storage: storage}
+func (r *CreateUserRequest) Validate() error {
+	return validator.Validator.Struct(r)
 }
 
-func (s *UserService) CreateUsers(ctx context.Context, user entity.User) (int, error) {
-	return s.storage.CreateUser(ctx, user)
+func (s *Service) CreateUser(
+	ctx context.Context,
+	createUserRequest CreateUserRequest,
+) (uuid.UUID, error) {
+	if err := createUserRequest.Validate(); err != nil {
+		return uuid.Nil, fmt.Errorf("%w: %v", ErrNotValid, err)
+	}
+
+	t := time.Now()
+
+	user := entity.User{
+		ID:          uuid.New(),
+		FullName:    createUserRequest.FullName,
+		Gender:      createUserRequest.Gender,
+		DateOfBirth: createUserRequest.DateOfBirth,
+		CreatedAt:   t,
+		UpdatedAt:   t,
+		DeletedAt:   nil,
+	}
+
+	id, err := s.repository.CreateUser(ctx, user)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotValid) {
+			return uuid.Nil, fmt.Errorf("%w: %v", ErrNotValid, err)
+		}
+
+		return uuid.Nil, fmt.Errorf("CreateUser: %w", err)
+	}
+
+	return id, nil
 }
-func (s *UserService) UpdateUsers(ctx context.Context, user entity.User) (err error) {
-	return s.storage.UpdateUser(ctx, user)
+
+// TODO
+// - GetUser
+// - ListUsers
+
+func (s *Service) UpdateUser(ctx context.Context, user entity.User) error {
+	// FIXME
+	return nil
 }
-func (s *UserService) DeleteUsers(ctx context.Context, user entity.User) error {
-	return s.storage.DeleteUser(ctx, user)
+
+func (s *Service) DeleteUser(ctx context.Context, user entity.User) error {
+	// FIXME
+	return nil
 }

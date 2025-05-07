@@ -1,13 +1,25 @@
 package entity
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/validator"
+)
 
 type User struct {
-	ID          int       `json:"id"`
-	FullName    string    `json:"full_name"`
-	Gender      string    `json:"gender"`
-	DateOfBirth time.Time `json:"date_of_birth"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	DeletedAt   time.Time `json:"deleted_at"`
+	ID uuid.UUID `validate:"required"`
+
+	FullName    string    `validate:"required"`
+	Gender      string    `validate:"required,oneof=male female"`
+	DateOfBirth time.Time `validate:"required"`
+
+	CreatedAt time.Time  `validate:"required"`
+	UpdatedAt time.Time  `validate:"required"`
+	DeletedAt *time.Time `validate:"omitempty"`
+}
+
+func (u *User) Validate() error {
+	return validator.Validator.Struct(u)
 }

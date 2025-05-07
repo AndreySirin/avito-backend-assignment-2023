@@ -2,32 +2,27 @@ package service
 
 import (
 	"context"
+
+	"github.com/google/uuid"
+
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/entity"
-	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
 )
 
-type SegmentStorage interface {
-	CreateSegment(context.Context, entity.Segment) (int, error)
-	DeleteSegment(context.Context, entity.Segment) error
-	UpDateSegment(context.Context, entity.Segment) (err error)
-}
-type SegmentServis struct {
-	lg      logger.MyloggerInterface
-	storage SegmentStorage
+func (s *Service) CreateSegment(ctx context.Context, segment entity.Segment) (uuid.UUID, error) {
+	// FIXME
+	return uuid.Nil, nil
 }
 
-func NewSegment(lg *logger.MyLogger, storage SegmentStorage) *SegmentServis {
-	return &SegmentServis{
-		lg:      lg,
-		storage: storage,
-	}
+// TODO
+// - GetSegment
+// - ListSegments
+
+func (s *Service) UpdateSegment(ctx context.Context, segment entity.Segment) (err error) {
+	// FIXME
+	return nil
 }
-func (s *SegmentServis) CreateSegments(ctx context.Context, segment entity.Segment) (int, error) {
-	return s.storage.CreateSegment(ctx, segment)
-}
-func (s *SegmentServis) DeleteSegments(ctx context.Context, segment entity.Segment) error {
-	return s.storage.DeleteSegment(ctx, segment)
-}
-func (s *SegmentServis) UpDateSegments(ctx context.Context, segment entity.Segment) (err error) {
-	return s.storage.UpDateSegment(ctx, segment)
+
+func (s *Service) DeleteSegment(ctx context.Context, segment entity.Segment) error {
+	// FIXME
+	return nil
 }

@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/entity"
-	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
 )
 
 type SegmentStorage struct {
-	lg *logger.MyLogger
+	lg *slog.Logger
 	db *sql.DB
 }
 

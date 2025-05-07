@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/entity"
-	"github.com/AndreySirin/avito-backend-assignment-2023/internal/logger"
 )
 
 type SubscriptionStorage struct {
-	lg *logger.MyLogger
+	lg *slog.Logger
 	db *sql.DB
 }
 
@@ -20,7 +21,10 @@ func NewSubscription(db *Storage) *SubscriptionStorage {
 	}
 }
 
-func (s *SubscriptionStorage) InsertUserInSegment(ctx context.Context, subs entity.CreateSubscription) (err error) {
+func (s *SubscriptionStorage) InsertUserInSegment(
+	ctx context.Context,
+	subs entity.CreateSubscription,
+) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error starting transaction: %w", err)
@@ -75,7 +79,10 @@ FROM UNNEST($2::int[]) AS id_segm`,
 	return nil
 }
 
-func (s *SubscriptionStorage) DeleteUserInSegment(ctx context.Context, subs entity.CreateSubscription) (err error) {
+func (s *SubscriptionStorage) DeleteUserInSegment(
+	ctx context.Context,
+	subs entity.CreateSubscription,
+) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error starting transaction: %w", err)
