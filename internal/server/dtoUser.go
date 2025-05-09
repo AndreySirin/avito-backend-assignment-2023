@@ -3,38 +3,30 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/service"
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/validator"
 )
 
-type createUserRequest struct {
-	FullName    string `json:"fullName"    validate:"required"`
-	Gender      string `json:"gender"      validate:"required,oneof=male female"`
-	DateOfBirth string `json:"dateOfBirth" validate:"required"`
+var ErrNotValidDate = errors.New("not valid date")
+
+type CreateUserRequest struct {
+	FullName    string `json:"full_name"     validate:"required"`
+	Gender      string `json:"gender"        validate:"required,oneof=male female"`
+	DateOfBirth string `json:"date_of_birth" validate:"required"`
 }
 
-type updateUserRequest struct {
-	Id          uuid.UUID `json:"id"    validate:"required"`
-	FullName    string    `json:"fullName"    validate:"required"`
-	Gender      string    `json:"gender"      validate:"required,oneof=male female"`
-	DateOfBirth string    `json:"dateOfBirth" validate:"required"`
-}
-
-func (r *createUserRequest) valid() error {
+func (r *CreateUserRequest) Valid() error {
 	return validator.Validator.Struct(r)
 }
 
-func (r *updateUserRequest) valid() error { return validator.Validator.Struct(r) }
-
-var ErrNotValidDate = errors.New("not valid date")
-
-func (r *createUserRequest) toService() (service.CreateUserRequest, error) {
+func (r *CreateUserRequest) ToService() service.CreateUserRequest {
 	dateOfBirth, err := time.Parse(time.DateOnly, r.DateOfBirth)
 	if err != nil {
-		return service.CreateUserRequest{}, fmt.Errorf("%w: %v", ErrNotValidDate, err)
+		return service.CreateUserRequest{}
 	}
 
 	reqToService := service.CreateUserRequest{
@@ -43,20 +35,33 @@ func (r *createUserRequest) toService() (service.CreateUserRequest, error) {
 		DateOfBirth: dateOfBirth,
 	}
 
-	return reqToService, nil
+	return reqToService
 }
 
-func (u *updateUserRequest) toService() (service.UpdateUserRequest, error) {
+type UpdateUserRequest struct {
+	ID          uuid.UUID `json:"id"            validate:"required"`
+	FullName    string    `json:"full_name"     validate:"required"`
+	Gender      string    `json:"gender"        validate:"required,oneof=male female"`
+	DateOfBirth string    `json:"date_of_birth" validate:"required"`
+}
+
+func (u *UpdateUserRequest) Valid() error {
+	if u.ID == uuid.Nil {
+		return fmt.Errorf("userID == uuid.Nil")
+	}
+	return validator.Validator.Struct(u)
+}
+
+func (u *UpdateUserRequest) ToService() service.UpdateUserRequest {
 	dateOfBirth, err := time.Parse(time.DateOnly, u.DateOfBirth)
 	if err != nil {
-		return service.UpdateUserRequest{}, fmt.Errorf("%w: %v", ErrNotValidDate, err)
+		return service.UpdateUserRequest{}
 	}
 	reqToService := service.UpdateUserRequest{
-		Id:          u.Id,
+		ID:          u.ID,
 		FullName:    u.FullName,
 		Gender:      u.Gender,
 		DateOfBirth: dateOfBirth,
 	}
-	return reqToService, nil
-
+	return reqToService
 }

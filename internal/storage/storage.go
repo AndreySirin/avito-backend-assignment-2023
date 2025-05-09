@@ -1,19 +1,20 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/url"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib" // импорт драйвера pgx для database/sql
 )
 
 const module = "storage"
 
 type Storage struct {
-	lg *slog.Logger
-	db *sql.DB
+	Lg *slog.Logger
+	Db *sql.DB
 }
 
 func New(lg *slog.Logger, user, password, dbname, address string) (*Storage, error) {
@@ -36,9 +37,13 @@ func New(lg *slog.Logger, user, password, dbname, address string) (*Storage, err
 	}
 
 	return &Storage{
-		lg: lg.With("module", module),
-		db: db,
+		Lg: lg.With("module", module),
+		Db: db,
 	}, nil
 }
 
-func (s *Storage) Close() error { return s.db.Close() }
+func (s *Storage) Close() error { return s.Db.Close() }
+
+func (s *Storage) TX(ctx context.Context) (*sql.Tx, error) {
+	return s.Db.BeginTx(ctx, nil)
+}
