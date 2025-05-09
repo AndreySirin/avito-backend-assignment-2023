@@ -22,7 +22,7 @@ type CreateUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	Id          uuid.UUID `validate:"required,uuid"`
+	ID          uuid.UUID `validate:"required"`
 	FullName    string    `validate:"required"`
 	Gender      string    `validate:"required,oneof=male female"`
 	DateOfBirth time.Time `validate:"required"`
@@ -44,15 +44,13 @@ func (s *Service) CreateUser(
 		return uuid.Nil, fmt.Errorf("%w: %v", ErrNotValid, err)
 	}
 
-	t := time.Now()
-
 	user := entity.User{
 		ID:          uuid.New(),
 		FullName:    createUserRequest.FullName,
 		Gender:      createUserRequest.Gender,
 		DateOfBirth: createUserRequest.DateOfBirth,
-		CreatedAt:   t,
-		UpdatedAt:   t,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 		DeletedAt:   nil,
 	}
 
@@ -67,21 +65,21 @@ func (s *Service) CreateUser(
 
 	return id, nil
 }
+
 func (s *Service) UpdateUser(ctx context.Context, userUpdate UpdateUserRequest) error {
 	if err := userUpdate.Validate(); err != nil {
 		return fmt.Errorf("%w: %v", ErrNotValid, err)
 	}
-	t := time.Now()
 	user := entity.User{
-		ID:          userUpdate.Id,
+		ID:          userUpdate.ID,
 		FullName:    userUpdate.FullName,
 		Gender:      userUpdate.Gender,
 		DateOfBirth: userUpdate.DateOfBirth,
-		UpdatedAt:   t,
+		UpdatedAt:   time.Now(),
 	}
 	err := s.repository.UpdateUser(ctx, user)
 	if err != nil {
-		return fmt.Errorf("UpdateUser: %w", err)
+		return fmt.Errorf("calling the method of db s.Repository.UpdateUser(ctx, user) : %w", err)
 	}
 	return nil
 }

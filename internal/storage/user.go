@@ -2,11 +2,13 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"time"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
-	"time"
 
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/entity"
 )
@@ -41,7 +43,7 @@ func (s *Storage) CreateUser(ctx context.Context, user entity.User) (uuid.UUID, 
 	}
 
 	var userID uuid.UUID
-	if err = s.db.QueryRowContext(
+	if err = s.Db.QueryRowContext(
 		ctx,
 		query,
 		args...,
@@ -59,17 +61,20 @@ func (s *Storage) CreateUser(ctx context.Context, user entity.User) (uuid.UUID, 
 func (s *Storage) GetUser(ctx context.Context, id uuid.UUID) (*entity.User, error) {
 	var user entity.User
 	query, args, err := sq.Select(
+		"id",
 		"full_name",
 		"gender",
 		"date_of_birth",
 	).From("users").
-		Where(sq.Eq{"id": id}).
-		Where(sq.Eq{"delete_at": nil}).
-		ToSql()
+		Where(sq.And{
+			sq.Eq{"id": id},
+			sq.Eq{"delete_at": nil},
+		}).PlaceholderFormat(sq.Dollar).ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("build query: %v", err)
 	}
-	err = s.db.QueryRowContext(ctx, query, args...).Scan(&user.FullName, &user.Gender, &user.DateOfBirth)
+	err = s.Db.QueryRowContext(ctx, query, args...).
+		Scan(&user.ID, &user.FullName, &user.Gender, &user.DateOfBirth)
 	if err != nil {
 		return nil, fmt.Errorf("get user: %v", err)
 	}
@@ -77,8 +82,8 @@ func (s *Storage) GetUser(ctx context.Context, id uuid.UUID) (*entity.User, erro
 }
 
 func (s *Storage) ListUsers(ctx context.Context) ([]entity.User, error) {
-
 	query, args, err := sq.Select(
+		"id",
 		"full_name",
 		"gender",
 		"date_of_birth",
@@ -88,16 +93,22 @@ func (s *Storage) ListUsers(ctx context.Context) ([]entity.User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("build query: %v", err)
 	}
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.Db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query: %v", err)
 	}
-	defer rows.Close()
+
+	defer func() {
+		if errClose := rows.Close(); errClose != nil {
+			s.Lg.Error("error closing rows", "error", errClose)
+			return
+		}
+	}()
 
 	var users []entity.User
 	for rows.Next() {
 		var u entity.User
-		err = rows.Scan(&u.FullName, &u.Gender, &u.DateOfBirth)
+		err = rows.Scan(&u.ID, &u.FullName, &u.Gender, &u.DateOfBirth)
 		if err != nil {
 			return nil, fmt.Errorf("query rows: %v", err)
 		}
@@ -110,9 +121,9 @@ func (s *Storage) ListUsers(ctx context.Context) ([]entity.User, error) {
 }
 
 func (s *Storage) UpdateUser(ctx context.Context, user entity.User) (err error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.Db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("update user: %v", err)
+		return fmt.Errorf("error for create tx: %v", err)
 	}
 	defer func() {
 		if err != nil {
@@ -122,10 +133,14 @@ func (s *Storage) UpdateUser(ctx context.Context, user entity.User) (err error) 
 		}
 	}()
 	var exists bool
-	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", user.ID).
+
+	query, _, err := sq.Select("EXISTS(SELECT 1 FROM users WHERE id = 1$)").
+		PlaceholderFormat(sq.Dollar).ToSql()
+
+	err = tx.QueryRowContext(ctx, query, user.ID).
 		Scan(&exists)
 	if err != nil {
-		return fmt.Errorf("update user: %v", err)
+		return fmt.Errorf("error verifying the user's existence: %v", err)
 	}
 	if !exists {
 		return fmt.Errorf("user does not exist")
@@ -136,8 +151,10 @@ func (s *Storage) UpdateUser(ctx context.Context, user entity.User) (err error) 
 		Set("gender", user.Gender).
 		Set("date_of_birth", user.DateOfBirth).
 		Set("update_at", user.UpdatedAt).
-		Where(sq.Eq{"id": user.ID}).
-		Where(sq.Eq{"delete_at": nil}).ToSql()
+		Where(sq.And{
+			sq.Eq{"id": user.ID},
+			sq.Eq{"delete_at": nil},
+		}).PlaceholderFormat(sq.Dollar).ToSql()
 	if err != nil {
 		return fmt.Errorf("build query: %v", err)
 	}
@@ -149,15 +166,16 @@ func (s *Storage) UpdateUser(ctx context.Context, user entity.User) (err error) 
 }
 
 func (s *Storage) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	t := time.Now()
 	query, args, err := sq.Update("users").
-		Set("delete_at", t).
-		Where(sq.Eq{"id": id}).
-		Where(sq.Eq{"delete_at": nil}).ToSql()
+		Set("delete_at", time.Now()).
+		Where(sq.And{
+			sq.Eq{"id": id},
+			sq.Eq{"delete_at": nil},
+		}).PlaceholderFormat(sq.Dollar).ToSql()
 	if err != nil {
 		return fmt.Errorf("build query: %v", err)
 	}
-	rows, err := s.db.ExecContext(ctx, query, args...)
+	rows, err := s.Db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("delete user: %v", err)
 	}
@@ -169,4 +187,59 @@ func (s *Storage) DeleteUser(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("no user found with id %v", id)
 	}
 	return nil
+}
+
+func (s *Storage) CheckExistUser(ctx context.Context, tx *sql.Tx, id uuid.UUID) error {
+	var exists bool
+
+	query, _, err := sq.Select("EXISTS(SELECT 1 FROM users WHERE id = ?)").
+		PlaceholderFormat(sq.Dollar).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build query: %v", err)
+	}
+	err = tx.QueryRowContext(ctx, query, id).
+		Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("error checking if user exists: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("user does not exist")
+	}
+	return nil
+}
+
+func (s *Storage) ListUsersID(ctx context.Context) ([]uuid.UUID, error) {
+	query, args, err := sq.Select("id").
+		From("users").
+		Where(sq.Eq{"delete_at": nil}).
+		OrderBy("RANDOM()").ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build query: %v", err)
+	}
+	rows, err := s.Db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query: %v", err)
+	}
+
+	defer func() {
+		if errClose := rows.Close(); errClose != nil {
+			s.Lg.Error("error closing rows", "error", errClose)
+			return
+		}
+	}()
+
+	var ID []uuid.UUID
+	for rows.Next() {
+		var u uuid.UUID
+		err = rows.Scan(&u)
+		if err != nil {
+			return nil, fmt.Errorf("query rows: %v", err)
+		}
+		ID = append(ID, u)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %v", err)
+	}
+	return ID, nil
 }
