@@ -24,6 +24,19 @@ CREATE TABLE segments (
     delete_at TIMESTAMP
 );
 
+INSERT INTO users (full_name, gender, date_of_birth)
+VALUES
+    ('Alice Ivanova', 'female', '1990-05-01'),
+    ('Bob Petrov', 'male', '1985-09-15'),
+    ('Charlie Smirnov', 'male', '1992-12-25');
+
+-- 🔹 Вставка сегментов
+INSERT INTO segments (title, description, auto_user_prc)
+VALUES
+    ('Segment A', 'First segment for testing', 10),
+    ('Segment B', 'Second segment for testing', 25),
+    ('Segment C', 'Third segment for testing', 50);
+
 CREATE TABLE subscriptions (
     PRIMARY KEY (user_id, segment_id),
     user_id uuid NOT NULL REFERENCES users(id),

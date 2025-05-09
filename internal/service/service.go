@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -21,11 +22,14 @@ type repository interface {
 	CreateSegment(ctx context.Context, segment entity.Segment) (uuid.UUID, error)
 	UpDateSegment(ctx context.Context, segment entity.Segment) (err error)
 	GetSegment(ctx context.Context, id uuid.UUID) (*entity.Segment, error)
-
+	ListSegments(ctx context.Context) ([]entity.Segment, error)
 	DeleteSegment(ctx context.Context, id uuid.UUID) error
-
 	//
-
+	TX(ctx context.Context) (*sql.Tx, error)
+	CheckExistUser(ctx context.Context, tx *sql.Tx, subs *entity.Subscription) error
+	GetIDForSegment(ctx context.Context, tx *sql.Tx, sub *entity.Subscription) ([]uuid.UUID, error)
+	InsertSubscription(ctx context.Context, tx *sql.Tx, sub *entity.Subscription) error
+	DeleteSubscription(ctx context.Context, tx *sql.Tx, sub *entity.Subscription) error
 }
 
 type Service struct {

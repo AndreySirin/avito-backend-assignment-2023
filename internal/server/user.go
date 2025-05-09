@@ -3,27 +3,28 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+
+	"github.com/AndreySirin/avito-backend-assignment-2023/internal/server/dto"
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/service"
 )
 
 func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
-
-	var req createUserRequest
+	var req dto.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := req.valid(); err != nil {
+	if err := req.Valid(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	userRequest, err := req.toService()
+	userRequest, err := req.ToService()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -54,8 +55,7 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
-
-	var req updateUserRequest
+	var req dto.UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -66,12 +66,12 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	req.Id = id
-	if err = req.valid(); err != nil {
+	req.ID = id
+	if err = req.Valid(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	userRequest, err := req.toService()
+	userRequest, err := req.ToService()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -128,7 +128,8 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-func (s *Server) handleGetUsers(w http.ResponseWriter, r *http.Request) {
+
+func (s *Server) handleGetUser(w http.ResponseWriter, r *http.Request) {
 	idUser := chi.URLParam(r, "id")
 	id, err := uuid.Parse(idUser)
 	if err != nil {
@@ -153,7 +154,8 @@ func (s *Server) handleGetUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-func (s *Server) handleListUser(w http.ResponseWriter, r *http.Request) {
+
+func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := s.service.ListUsers(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -162,5 +164,7 @@ func (s *Server) handleListUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err = json.NewEncoder(w).Encode(users); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }

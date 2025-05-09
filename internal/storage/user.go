@@ -2,11 +2,13 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"time"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
-	"time"
 
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/entity"
 )
@@ -59,17 +61,20 @@ func (s *Storage) CreateUser(ctx context.Context, user entity.User) (uuid.UUID, 
 func (s *Storage) GetUser(ctx context.Context, id uuid.UUID) (*entity.User, error) {
 	var user entity.User
 	query, args, err := sq.Select(
+		"id",
 		"full_name",
 		"gender",
 		"date_of_birth",
 	).From("users").
-		Where(sq.Eq{"id": id}).
-		Where(sq.Eq{"delete_at": nil}).
-		ToSql()
+		Where(sq.And{
+			sq.Eq{"id": id},
+			sq.Expr("delete_at IS NULL"),
+		}).PlaceholderFormat(sq.Dollar).ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("build query: %v", err)
 	}
-	err = s.db.QueryRowContext(ctx, query, args...).Scan(&user.FullName, &user.Gender, &user.DateOfBirth)
+	err = s.db.QueryRowContext(ctx, query, args...).
+		Scan(&user.ID, &user.FullName, &user.Gender, &user.DateOfBirth)
 	if err != nil {
 		return nil, fmt.Errorf("get user: %v", err)
 	}
@@ -77,8 +82,8 @@ func (s *Storage) GetUser(ctx context.Context, id uuid.UUID) (*entity.User, erro
 }
 
 func (s *Storage) ListUsers(ctx context.Context) ([]entity.User, error) {
-
 	query, args, err := sq.Select(
+		"id",
 		"full_name",
 		"gender",
 		"date_of_birth",
@@ -92,12 +97,18 @@ func (s *Storage) ListUsers(ctx context.Context) ([]entity.User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query: %v", err)
 	}
-	defer rows.Close()
+
+	defer func() {
+		if errClose := rows.Close(); errClose != nil {
+			s.lg.Error("error closing rows", "error", errClose)
+			return
+		}
+	}()
 
 	var users []entity.User
 	for rows.Next() {
 		var u entity.User
-		err = rows.Scan(&u.FullName, &u.Gender, &u.DateOfBirth)
+		err = rows.Scan(&u.ID, &u.FullName, &u.Gender, &u.DateOfBirth)
 		if err != nil {
 			return nil, fmt.Errorf("query rows: %v", err)
 		}
@@ -112,7 +123,7 @@ func (s *Storage) ListUsers(ctx context.Context) ([]entity.User, error) {
 func (s *Storage) UpdateUser(ctx context.Context, user entity.User) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("update user: %v", err)
+		return fmt.Errorf("error for create tx: %v", err)
 	}
 	defer func() {
 		if err != nil {
@@ -125,7 +136,7 @@ func (s *Storage) UpdateUser(ctx context.Context, user entity.User) (err error) 
 	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", user.ID).
 		Scan(&exists)
 	if err != nil {
-		return fmt.Errorf("update user: %v", err)
+		return fmt.Errorf("error verifying the user's existence: %v", err)
 	}
 	if !exists {
 		return fmt.Errorf("user does not exist")
@@ -136,8 +147,10 @@ func (s *Storage) UpdateUser(ctx context.Context, user entity.User) (err error) 
 		Set("gender", user.Gender).
 		Set("date_of_birth", user.DateOfBirth).
 		Set("update_at", user.UpdatedAt).
-		Where(sq.Eq{"id": user.ID}).
-		Where(sq.Eq{"delete_at": nil}).ToSql()
+		Where(sq.And{
+			sq.Eq{"id": user.ID},
+			sq.Expr("delete_at IS NULL"),
+		}).PlaceholderFormat(sq.Dollar).ToSql()
 	if err != nil {
 		return fmt.Errorf("build query: %v", err)
 	}
@@ -152,8 +165,10 @@ func (s *Storage) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	t := time.Now()
 	query, args, err := sq.Update("users").
 		Set("delete_at", t).
-		Where(sq.Eq{"id": id}).
-		Where(sq.Eq{"delete_at": nil}).ToSql()
+		Where(sq.And{
+			sq.Eq{"id": id},
+			sq.Expr("delete_at IS NULL"),
+		}).PlaceholderFormat(sq.Dollar).ToSql()
 	if err != nil {
 		return fmt.Errorf("build query: %v", err)
 	}
@@ -167,6 +182,19 @@ func (s *Storage) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("no user found with id %v", id)
+	}
+	return nil
+}
+
+func (s *Storage) CheckExistUser(ctx context.Context, tx *sql.Tx, subs *entity.Subscription) error {
+	var exists bool
+	err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", subs.IDUser).
+		Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("error checking if user exists: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("user does not exist")
 	}
 	return nil
 }

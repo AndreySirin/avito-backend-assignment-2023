@@ -17,6 +17,8 @@ WORKDIR /root
 
 COPY --from=builder /app/avito .
 
+COPY config.yaml /root/
+
 EXPOSE 8080
 
 CMD ["/root/avito"]

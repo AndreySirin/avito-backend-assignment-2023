@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/entity"
-
 	"github.com/AndreySirin/avito-backend-assignment-2023/internal/validator"
 )
 
@@ -20,7 +20,7 @@ type CreateSegmentRequest struct {
 func (c *CreateSegmentRequest) Validate() error { return validator.Validator.Struct(c) }
 
 type UpdateSegmentRequest struct {
-	ID          uuid.UUID `validate:"required,uuid"`
+	ID          uuid.UUID `validate:"required"`
 	Title       string    `validate:"required"`
 	Description string    `validate:"required"`
 	AutoUserPrc uint8     `validate:"required,gte=0,lte=100"`
@@ -28,16 +28,22 @@ type UpdateSegmentRequest struct {
 
 func (u *UpdateSegmentRequest) Validate() error { return validator.Validator.Struct(u) }
 
-func (s *Service) CreateSegment(ctx context.Context, request CreateSegmentRequest) (uuid.UUID, error) {
+func (s *Service) CreateSegment(
+	ctx context.Context,
+	request CreateSegmentRequest,
+) (uuid.UUID, error) {
 	err := request.Validate()
 	if err != nil {
 		return uuid.Nil, err
 	}
+
 	segment := entity.Segment{
 		ID:          uuid.New(),
 		Title:       request.Title,
 		Description: request.Description,
 		AutoUserPrc: request.AutoUserPrc,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 	id, err := s.repository.CreateSegment(ctx, segment)
 	if err != nil {
@@ -54,11 +60,13 @@ func (s *Service) GetSegment(ctx context.Context, id uuid.UUID) (*entity.Segment
 	return segment, nil
 }
 
-
+func (s *Service) ListSegment(ctx context.Context) ([]entity.Segment, error) {
+	segments, err := s.repository.ListSegments(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error servis %v", err)
+	}
+	return segments, nil
 }
-// TODO
-// - GetSegment
-// - ListSegments
 
 func (s *Service) UpdateSegment(ctx context.Context, request UpdateSegmentRequest) (err error) {
 	err = request.Validate()
