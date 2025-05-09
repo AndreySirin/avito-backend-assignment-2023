@@ -15,9 +15,9 @@ type User struct {
 	Gender      string    `validate:"required,oneof=male female"`
 	DateOfBirth time.Time `validate:"required"`
 
-	CreatedAt time.Time  `validate:"required"`
-	UpdatedAt time.Time  `validate:"required"`
-	DeletedAt *time.Time `validate:"omitempty"`
+	CreatedAt time.Time `validate:"required"`
+	UpdatedAt time.Time `validate:"required"`
+	DeletedAt *time.Time
 }
 
 func (u *User) Validate() error {
